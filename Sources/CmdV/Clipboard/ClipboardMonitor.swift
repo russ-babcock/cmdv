@@ -124,12 +124,20 @@ final class ClipboardMonitor {
             )
         }
 
-        if types.contains(.fileURL), let urlStrings = pasteboard.propertyList(forType: .fileURL) as? [String] {
-            let joined = urlStrings.joined(separator: "\n")
+        // `readObjects` rather than `propertyList(forType: .fileURL)`: the
+        // public.file-url type carries a single URL string per pasteboard item,
+        // not an array, so the old `as? [String]` cast always failed — and a
+        // Finder copy silently fell through to the plain-text branch below,
+        // where it was stored as the bare filename with the path discarded.
+        // readObjects reads across every item, so multi-file copies work too.
+        if types.contains(.fileURL),
+           let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL],
+           !urls.isEmpty {
+            let joined = urls.map(\.absoluteString).joined(separator: "\n")
             return ClipPayload(
                 kind: .fileURL,
                 plainText: joined,
-                previewText: String(joined.prefix(500)),
+                previewText: Self.fileClipPreview(for: urls),
                 sourceBundleID: sourceBundleID,
                 sourceAppName: sourceAppName,
                 isConcealed: isConcealed,
@@ -162,6 +170,16 @@ final class ClipboardMonitor {
         }
 
         return nil
+    }
+
+    /// What a copied-file row reads as. The stored `plainText` is the full
+    /// `file://` URL list, which is what gets written back to the pasteboard,
+    /// but a row showing `file:///Users/…/report.pdf` is mostly noise — the
+    /// name is the part that identifies the clip.
+    static func fileClipPreview(for urls: [URL]) -> String {
+        let names = urls.map { $0.lastPathComponent }
+        guard let first = names.first else { return "" }
+        return names.count == 1 ? first : "\(first) + \(names.count - 1) more"
     }
 
     private func imageData(from types: [NSPasteboard.PasteboardType]) -> Data? {
