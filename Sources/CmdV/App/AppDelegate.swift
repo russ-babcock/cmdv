@@ -9,6 +9,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// `isInserted` binding — already has something to read.
     let preferences = Preferences()
 
+    /// Created eagerly for the same reason as `preferences`: the menu bar
+    /// extra's "Check for Updates…" item binds to it on the first `body` pass.
+    /// Constructing it also starts Sparkle's scheduled background checks.
+    let updater = UpdaterController()
+
     private(set) var environment: AppEnvironment!
 
     func applicationDidFinishLaunching(_ notification: Notification) {

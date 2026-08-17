@@ -16,6 +16,11 @@ struct CmdVApp: App {
 
             Divider()
 
+            Button("Check for Updates…") {
+                appDelegate.updater.checkForUpdates()
+            }
+            .disabled(!appDelegate.updater.canCheckForUpdates)
+
             SettingsLink {
                 Text("Settings…")
             }
@@ -41,6 +46,7 @@ struct CmdVApp: App {
         Settings {
             SettingsView(
                 preferences: appDelegate.preferences,
+                updater: appDelegate.updater,
                 attemptHotkey: { combo in
                     appDelegate.environment?.hotkeyManager.register(combo) ?? false
                 },

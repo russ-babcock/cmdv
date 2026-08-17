@@ -30,5 +30,18 @@
 	<false/>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>CmdV needs to send Cmd+V to the app you're pasting into.</string>
+
+	<!-- Sparkle. SUPublicEDKey is the public half of the EdDSA key pair whose
+	     private half lives in the release machine's login Keychain; Sparkle
+	     refuses any update whose signature it can't verify against this key,
+	     which is what makes updates safe to serve over a plain static feed. -->
+	<key>SUFeedURL</key>
+	<string>https://russ-babcock.github.io/cmdv/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>PLWq9xAI2fvUv2AOdTvz0SPYRuZTfgEbKMNbVebBm0w=</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
 </dict>
 </plist>

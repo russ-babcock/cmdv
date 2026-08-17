@@ -2,6 +2,7 @@ import SwiftUI
 
 struct GeneralSettingsView: View {
     @Bindable var preferences: Preferences
+    let updater: UpdaterController
 
     var body: some View {
         Form {
@@ -36,6 +37,23 @@ struct GeneralSettingsView: View {
                 Picker("Open clipboard window at", selection: $preferences.windowPositionMode) {
                     Text("Mouse cursor").tag(Preferences.WindowPositionMode.cursor)
                     Text("Center of screen").tag(Preferences.WindowPositionMode.centered)
+                }
+            }
+
+            Section("Updates") {
+                Toggle("Check for updates automatically", isOn: Binding(
+                    get: { updater.automaticallyChecksForUpdates },
+                    set: { updater.automaticallyChecksForUpdates = $0 }
+                ))
+
+                LabeledContent {
+                    Button("Check Now") { updater.checkForUpdates() }
+                        .disabled(!updater.canCheckForUpdates)
+                } label: {
+                    Text(updater.versionDescription)
+                    if let lastCheck = updater.lastUpdateCheckDate {
+                        Text("Last checked \(lastCheck.formatted(date: .abbreviated, time: .shortened))")
+                    }
                 }
             }
         }

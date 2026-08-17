@@ -35,12 +35,23 @@ Images and rich text render properly; arrow keys move between clips.
 clicked without making CmdV the active app — which is what makes both single pastes
 and queue mode land in the right place.
 
+**Automatic updates.** CmdV checks for new versions once a day and can install them
+itself, via [Sparkle](https://sparkle-project.org). Updates are cryptographically
+signed, so only builds from the real signing key are ever accepted.
+
 ## Requirements
 
 - **macOS 26.0 or later**
 - Swift 6.2 toolchain (Xcode, or Command Line Tools)
 
 ## Installing
+
+Download the latest `CmdV-x.y.z.zip` from
+[Releases](https://github.com/russ-babcock/cmdv/releases), unzip it, and drag
+`CmdV.app` to `/Applications`. After that CmdV keeps itself up to date — see
+[Updates](#updates) below.
+
+### Building from source
 
 Build the app bundle and move it into place:
 
@@ -88,6 +99,19 @@ certificate instead:
 ```bash
 DEVELOPER_ID="Developer ID Application: Your Name (TEAMID)" Scripts/build.sh --release
 ```
+
+## Updates
+
+CmdV checks for updates once a day and offers to install them. You can also check
+on demand from **Settings → General → Updates → Check Now**, or from the menu bar
+icon's **Check for Updates…** item, and turn the automatic check off in the same
+place.
+
+Updates are signed with an EdDSA key whose public half is compiled into the app;
+Sparkle rejects anything that doesn't verify, so a compromised download host still
+can't push you a malicious build.
+
+Publishing a release is documented in [RELEASING.md](RELEASING.md).
 
 ## Usage
 

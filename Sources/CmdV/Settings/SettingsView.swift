@@ -2,12 +2,13 @@ import SwiftUI
 
 struct SettingsView: View {
     @Bindable var preferences: Preferences
+    let updater: UpdaterController
     let attemptHotkey: (KeyCombo) -> Bool
     let restartMonitoring: () -> Void
 
     var body: some View {
         TabView {
-            GeneralSettingsView(preferences: preferences)
+            GeneralSettingsView(preferences: preferences, updater: updater)
                 .tabItem { Label("General", systemImage: "gearshape") }
 
             HotkeysSettingsView(preferences: preferences, attemptHotkey: attemptHotkey)
