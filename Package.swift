@@ -9,7 +9,13 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/groue/GRDB.swift", .upToNextMajor(from: "7.11.0")),
-        .package(url: "https://github.com/sparkle-project/Sparkle", .upToNextMajor(from: "2.6.0"))
+        // 2.7.2 is the floor, not 2.6.x: CVE-2025-10015 lets a local attacker
+        // register Sparkle's Downloader XPC service globally and inherit the
+        // host app's TCC permissions, and it is fixed in 2.7.2. CmdV holds
+        // Accessibility, so that inheritance would be worth a lot to an
+        // attacker. Package.resolved pins a newer version, but the floor is
+        // what a fresh resolve is permitted to fall back to.
+        .package(url: "https://github.com/sparkle-project/Sparkle", .upToNextMajor(from: "2.7.2"))
     ],
     targets: [
         .executableTarget(

@@ -56,6 +56,7 @@ enum ImageStore {
             options: 0
         )
         try plistData.write(to: url, options: .atomic)
+        restrictPermissions(of: url)
         return url.path
     }
 
@@ -85,6 +86,14 @@ enum ImageStore {
         guard CGImageDestinationFinalize(destination) else {
             throw ImageStoreError.writeFailed
         }
+        restrictPermissions(of: url)
+    }
+
+    /// Copied content is written owner-only. The enclosing directory is already
+    /// 0700, so this is defence in depth — it also covers the case of a file
+    /// being moved or copied out of that directory later.
+    private static func restrictPermissions(of url: URL) {
+        try? FileManager.default.setAttributes(AppPaths.fileAttributes, ofItemAtPath: url.path)
     }
 }
 

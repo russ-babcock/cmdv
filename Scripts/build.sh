@@ -100,6 +100,16 @@ if [[ -z "$SPARKLE_FW" ]]; then
 fi
 ditto "$SPARKLE_FW" "$FRAMEWORKS_DIR/Sparkle.framework"
 
+# Sparkle's XPC services are only used by sandboxed apps, and only when the
+# host app opts in via SUEnableDownloaderService / SUEnableInstallerLauncherService
+# in its Info.plist (see Sparkle's SPUXPCServiceIsEnabled). CmdV is not
+# sandboxed and sets neither, so these are dead code — but Downloader.xpc is
+# the component behind CVE-2025-10015, where a local attacker registers it
+# globally to inherit the host app's TCC permissions. CmdV holds Accessibility,
+# which is about the most valuable grant there is to inherit. Shipping it
+# anyway is unnecessary exposure, so it does not travel in the bundle.
+rm -rf "$FRAMEWORKS_DIR/Sparkle.framework/Versions/B/XPCServices"
+
 # The executable links @rpath/Sparkle.framework/... but SwiftPM only gives it
 # an @loader_path rpath, which points at Contents/MacOS. Teach it where the
 # embedded framework actually lives, one directory over.
