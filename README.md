@@ -24,9 +24,16 @@ that key while the window is open. Pinned clips keep their key regardless of pos
 and are never evicted by the history limit.
 
 **Password-manager awareness.** Copies flagged with the standard
-`org.nspasteboard.ConcealedType` marker — plus copies from a list of known password
-manager apps and browser extensions — are auto-purged after 60 seconds instead of
-being kept in history.
+`org.nspasteboard.ConcealedType` marker are auto-purged after 60 seconds instead of
+being kept in history. As a supplement, copies from a built-in list of known password
+manager apps and browser extensions get the same treatment even when unflagged.
+
+What that doesn't cover: the marker is authoritative, but the app list is a best-effort
+deny list. A secret that arrives some other way — pasted
+from a note, printed by a terminal, copied out of a password manager not on the list —
+is kept like any other clip until it ages out of your history limit. Treat CmdV's
+history as sensitive regardless (see [Where data is stored](#where-data-is-stored)),
+and add anything you want ignored outright to **Settings → Privacy**.
 
 **Previews.** Press Space, or right-click → Preview, for a Quick Look-style overlay.
 Images and rich text render properly; arrow keys move between clips.
@@ -146,7 +153,7 @@ target app first.
 Four panes, reachable from the gear button:
 
 - **General** — window position (at the cursor or centered), launch at login, menu bar
-  icon visibility, appearance (System/Light/Dark)
+  icon visibility, appearance (System/Light/Dark), and update checks
 - **Hotkeys** — record a different global hotkey; choose whether pinned clips activate
   on a bare keypress or require `⌃`
 - **History** — how many clips to keep (default 50; favorited and locked clips are
@@ -162,7 +169,15 @@ Four panes, reachable from the gear button:
   payloads/       rich-text payloads
 ```
 
-Nothing leaves your machine — there is no network code in the app.
+Those directories are created owner-only (`0700`, with `0600` files), so other accounts
+on the same Mac can't read your history. The database is not encrypted, though: anything
+running as you can read it, and so can anyone with your unlocked machine or an unencrypted
+backup of it. Turn on FileVault if that matters to you.
+
+Your clipboard contents never leave your machine — CmdV has no telemetry, analytics, or
+sync. The one thing it does talk to is its own update feed on GitHub, to check whether a
+newer version exists and download it; that can be switched off in **Settings → General →
+Updates**.
 
 ## Development
 
