@@ -3,7 +3,7 @@ import AppKit
 /// The CmdV mark as it appears in the menu bar.
 ///
 /// Loaded from bundled art rather than drawn in code: the artwork is the design
-/// source of truth (see `CmdV-3A-Paper/`), and hinting a shape this small by
+/// source of truth (see `CmdV-final/`), and hinting a shape this small by
 /// hand in Core Graphics is a losing game.
 enum MenuBarIcon {
     /// Menu bar items are laid out in points; 18pt is the standard mark size.

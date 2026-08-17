@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<defs>
+<linearGradient id="plate" x1="0" y1="0" x2="0.6" y2="1"><stop offset="0" stop-color="#3f414c"></stop><stop offset="1" stop-color="#1c1d24"></stop></linearGradient>
+<linearGradient id="glyph" x1="0" y1="0" x2="0.7" y2="1"><stop offset="0" stop-color="#ffffff"></stop><stop offset="1" stop-color="#ffffff" stop-opacity="0.42"></stop></linearGradient>
+</defs>
+<rect x="94" y="94" width="836" height="836" rx="187.01" fill="url(#plate)"></rect>
+<g transform="translate(185.96 185.96)">
+<text x="326.04" y="0.00" fill="url(#glyph)" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-weight="500" font-size="365.16" text-anchor="middle" dominant-baseline="text-before-edge">⎇</text>
+<polyline points="215.19,402.66 326.04,513.51 436.89,402.66" fill="none" stroke="#4fbde6" stroke-width="55.43" stroke-linejoin="round" stroke-linecap="round"></polyline>
+<polyline points="234.75,542.86 326.04,634.15 417.33,542.86" fill="none" stroke="#ffffff" stroke-width="48.91" stroke-linejoin="round" stroke-linecap="round" stroke-opacity="0.5"></polyline>
+</g>
+</svg>
