@@ -24,7 +24,12 @@ let package = Package(
                 .product(name: "GRDB", package: "GRDB.swift"),
                 .product(name: "Sparkle", package: "Sparkle")
             ],
-            path: "Sources/CmdV"
+            path: "Sources/CmdV",
+            // The menu bar art. Note this is the target's own resource folder,
+            // distinct from the top-level Resources/ that holds Info.plist and
+            // AppIcon.icns — those are bundle scaffolding assembled by
+            // Scripts/build.sh, not things SwiftPM knows about.
+            resources: [.process("Resources")]
         ),
         .testTarget(
             name: "CmdVTests",

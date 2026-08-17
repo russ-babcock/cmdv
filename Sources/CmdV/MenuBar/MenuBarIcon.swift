@@ -1,39 +1,41 @@
 import AppKit
 
-/// The CmdV mark: two overlapping clipboard/card outlines (a clipboard
-/// history) with a bold V on the front card. Drawn as a black-on-clear
-/// template image so AppKit re-tints it automatically for light/dark menu
-/// bars and active/inactive state.
+/// The CmdV mark as it appears in the menu bar.
+///
+/// Loaded from bundled art rather than drawn in code: the artwork is the design
+/// source of truth (see `CmdV-3A-Paper/`), and hinting a shape this small by
+/// hand in Core Graphics is a losing game.
 enum MenuBarIcon {
+    /// Menu bar items are laid out in points; 18pt is the standard mark size.
+    private static let pointSize = NSSize(width: 18, height: 18)
+
     static func make() -> NSImage {
-        let size = NSSize(width: 18, height: 18)
-        let image = NSImage(size: size, flipped: false) { rect in
-            draw(in: rect, tint: .black)
-            return true
-        }
+        let image = load() ?? NSImage(size: pointSize)
+        image.size = pointSize
+        // Template rendering is what makes the mark invert for a light or dark
+        // menu bar and tint when the item is highlighted. Without it the icon
+        // stays black and disappears against a dark menu bar.
         image.isTemplate = true
         return image
     }
 
-    /// Shared by the menu bar template render and the full-color app icon
-    /// generator (`Scripts/GenerateAppIcon.swift`) so both use identical
-    /// geometry. Stroke-only by design: a template image can't distinguish
-    /// two different fill colors, only alpha, so there's no filled shape to
-    /// "knock out" a glyph from — everything here is line art plus a filled V.
-    static func draw(in rect: NSRect, tint: NSColor) {
-        let back = NSBezierPath(roundedRect: NSRect(x: 4.3, y: 3.3, width: 11, height: 11.5), xRadius: 2, yRadius: 2)
-        back.lineWidth = 1.3
-        tint.setStroke()
-        back.stroke()
+    /// The 1x/2x/3x PNGs become representations of a single image, so AppKit
+    /// picks the right one per display rather than scaling one master.
+    private static func load() -> NSImage? {
+        let scales = ["CmdVmenubarTemplate", "CmdVmenubarTemplate@2x", "CmdVmenubarTemplate@3x"]
+        let representations = scales.compactMap { name -> NSImageRep? in
+            guard let url = Bundle.module.url(forResource: name, withExtension: "png"),
+                  let data = try? Data(contentsOf: url)
+            else { return nil }
+            return NSBitmapImageRep(data: data)
+        }
+        guard !representations.isEmpty else {
+            NSLog("CmdV: menu bar icon art missing from bundle")
+            return nil
+        }
 
-        let front = NSBezierPath(roundedRect: NSRect(x: 2.3, y: 1.3, width: 11, height: 11.5), xRadius: 2, yRadius: 2)
-        front.lineWidth = 1.5
-        tint.setStroke()
-        front.stroke()
-
-        let vFont = NSFont.systemFont(ofSize: 8.4, weight: .heavy)
-        let vString = NSAttributedString(string: "V", attributes: [.font: vFont, .foregroundColor: tint])
-        let vSize = vString.size()
-        vString.draw(at: NSPoint(x: 7.8 - vSize.width / 2, y: 7.05 - vSize.height / 2))
+        let image = NSImage(size: pointSize)
+        representations.forEach(image.addRepresentation)
+        return image
     }
 }

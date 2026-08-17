@@ -26,10 +26,14 @@ final class UpdaterController {
             updaterDelegate: nil,
             userDriverDelegate: userDriverDelegate
         )
-        observation = controller.updater.observe(\.canCheckForUpdates, options: [.initial, .new]) { updater, _ in
-            let value = updater.canCheckForUpdates
+        // The KVO callback is a non-isolated closure, so it reads nothing from
+        // the updater directly — both it and this class are main-actor bound.
+        // Re-reading on the hop also means the newest value wins if several
+        // notifications land before the main actor gets around to them.
+        observation = controller.updater.observe(\.canCheckForUpdates, options: [.initial, .new]) { _, _ in
             Task { @MainActor [weak self] in
-                self?.canCheckForUpdates = value
+                guard let self else { return }
+                self.canCheckForUpdates = self.controller.updater.canCheckForUpdates
             }
         }
     }
@@ -80,11 +84,26 @@ private final class UpdatePresentationDelegate: NSObject, SPUStandardUserDriverD
         state: SPUUserUpdateState
     ) {
         guard handleShowingUpdate else { return }
-        NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: !state.userInitiated)
+        onMainActor {
+            NSApp.setActivationPolicy(.regular)
+            NSApp.activate(ignoringOtherApps: !state.userInitiated)
+        }
     }
 
     func standardUserDriverWillFinishUpdateSession() {
-        NSApp.setActivationPolicy(.accessory)
+        onMainActor {
+            NSApp.setActivationPolicy(.accessory)
+        }
+    }
+
+    /// Sparkle drives its user driver on the main thread, but the delegate
+    /// protocol isn't annotated to say so, leaving these methods non-isolated.
+    /// `assumeIsolated` states the contract instead of hopping asynchronously:
+    /// the activation policy has to change *before* Sparkle shows its window,
+    /// and an async hop would let the window appear first — the exact flicker
+    /// this delegate exists to prevent. If Sparkle ever calls off the main
+    /// thread this traps immediately rather than corrupting UI state quietly.
+    private func onMainActor(_ work: @MainActor () -> Void) {
+        MainActor.assumeIsolated(work)
     }
 }
