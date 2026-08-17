@@ -35,6 +35,24 @@ else
     SIGN_IDENTITY="-"   # ad-hoc fallback — Accessibility grants won't survive rebuilds
 fi
 
+# The hardened runtime is required for notarization and NOT usable without a
+# real Developer ID. It turns on library validation, which demands that the app
+# and every framework it loads share a Team ID — and a self-signed certificate
+# has none. Two binaries that both report "TeamIdentifier=not set" do not match
+# each other, so dyld refuses to load the embedded Sparkle.framework and the
+# app dies at launch with "different Team IDs". Developer ID certificates carry
+# a real team, so distribution builds get the hardened runtime and local ones
+# don't. --timestamp is likewise only needed for notarization, and it costs a
+# network round trip per signature.
+#
+# A plain string rather than an array: macOS ships bash 3.2, where expanding an
+# empty array under `set -u` is an "unbound variable" error, and these flags
+# contain no spaces so word splitting is safe.
+SIGN_FLAGS=""
+if [[ -n "${DEVELOPER_ID:-}" ]]; then
+    SIGN_FLAGS="--options runtime --timestamp"
+fi
+
 echo "==> Building ($CONFIG)…"
 if [[ "$CONFIG" == "release" ]]; then
     swift build -c release
@@ -90,18 +108,17 @@ install_name_tool -add_rpath "@executable_path/../Frameworks" "$MACOS_DIR/$APP_N
 # Signing must run inside-out: every nested bundle first, the app last. Note
 # there is no --deep here on purpose. --deep re-signs nested code with the
 # *outer* bundle's rules, which strips the XPC services' own identifiers and
-# produces a bundle the notary service rejects. Hardened runtime (--options
-# runtime) is mandatory for notarization and must be applied to every binary.
-echo "==> Signing (identity: $SIGN_IDENTITY)…"
+# produces a bundle the notary service rejects.
+echo "==> Signing (identity: $SIGN_IDENTITY, hardened runtime: ${DEVELOPER_ID:+yes}${DEVELOPER_ID:-no})…"
 SPARKLE_DEST="$FRAMEWORKS_DIR/Sparkle.framework/Versions/B"
 for xpc in "$SPARKLE_DEST"/XPCServices/*.xpc; do
     [[ -e "$xpc" ]] || continue
-    codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$xpc"
+    codesign --force $SIGN_FLAGS --sign "$SIGN_IDENTITY" "$xpc"
 done
-codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$SPARKLE_DEST/Updater.app"
-codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$SPARKLE_DEST/Autoupdate"
-codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$SPARKLE_DEST"
-codesign --force --options runtime --timestamp \
+codesign --force $SIGN_FLAGS --sign "$SIGN_IDENTITY" "$SPARKLE_DEST/Updater.app"
+codesign --force $SIGN_FLAGS --sign "$SIGN_IDENTITY" "$SPARKLE_DEST/Autoupdate"
+codesign --force $SIGN_FLAGS --sign "$SIGN_IDENTITY" "$SPARKLE_DEST"
+codesign --force $SIGN_FLAGS \
     --sign "$SIGN_IDENTITY" \
     --identifier "$BUNDLE_ID" \
     "$APP_BUNDLE"
