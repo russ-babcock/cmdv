@@ -28,17 +28,21 @@ struct ClipRowView: View {
                 }
             }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(clip.previewText)
-                    .lineLimit(2)
-                    .font(.system(size: 13))
-                    .foregroundStyle(detectedURL != nil ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
-                    .underline(detectedURL != nil)
+            VStack(alignment: .leading, spacing: 3) {
+                titleLine
 
                 if clip.sourceAppName != nil || clip.isConcealed {
                     HStack(spacing: 6) {
                         if let sourceAppName = clip.sourceAppName {
-                            Text(sourceAppName)
+                            HStack(spacing: 4) {
+                                if let bundleID = clip.sourceBundleID,
+                                   let icon = AppIconCache.icon(forBundleID: bundleID) {
+                                    Image(nsImage: icon)
+                                        .resizable()
+                                        .frame(width: 11, height: 11)
+                                }
+                                Text(sourceAppName)
+                            }
                         }
                         if clip.isConcealed, let expiresAt = clip.expiresAt {
                             Label {
@@ -49,8 +53,9 @@ struct ClipRowView: View {
                             .foregroundStyle(.orange)
                         }
                     }
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 10, weight: .medium))
+                    .tracking(0.2)
+                    .foregroundStyle(.tertiary)
                 }
             }
 
@@ -85,6 +90,36 @@ struct ClipRowView: View {
         .opacity(pasteOrder == nil ? 1 : 0.5)
     }
 
+    /// The main line of a row. Text clips show their own content, so it reads
+    /// as content; an image clip has no text of its own and its line is really
+    /// a description of the picture, so it is styled as metadata instead.
+    @ViewBuilder
+    private var titleLine: some View {
+        if clip.kind == .image {
+            HStack(spacing: 5) {
+                Image(systemName: "photo")
+                    .font(.system(size: 10, weight: .semibold))
+                Text(imageDescription)
+                    .monospacedDigit()
+            }
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+        } else {
+            Text(clip.previewText)
+                .lineLimit(2)
+                .font(.system(size: 13))
+                .foregroundStyle(detectedURL != nil ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
+                .underline(detectedURL != nil)
+        }
+    }
+
+    private var imageDescription: String {
+        guard let width = clip.pixelWidth, let height = clip.pixelHeight else {
+            return clip.previewText
+        }
+        return "\(width) \u{00D7} \(height)"
+    }
+
     @ViewBuilder
     private var thumbnail: some View {
         switch clip.kind {
@@ -92,9 +127,13 @@ struct ClipRowView: View {
             if let thumbPath = clip.thumbPath, let image = NSImage(contentsOfFile: thumbPath) {
                 Image(nsImage: image)
                     .resizable()
-                    .aspectRatio(contentMode: .fit)
+                    .aspectRatio(contentMode: .fill)
                     .frame(width: 36, height: 36)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 4)
+                            .strokeBorder(.white.opacity(0.15), lineWidth: 1)
+                    }
             } else {
                 placeholderIcon("photo")
             }
