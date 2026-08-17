@@ -74,6 +74,18 @@ struct Clip: Identifiable, Codable, Hashable {
     }
 }
 
+extension Clip {
+    /// Whether "Edit…" applies. An image has no text to edit, and a file clip's
+    /// content is a path owned by the file itself — retyping it would point the
+    /// clip at something that may not exist.
+    var isEditable: Bool {
+        switch kind {
+        case .text, .rtf, .html: true
+        case .image, .fileURL: false
+        }
+    }
+}
+
 extension Clip: FetchableRecord, MutablePersistableRecord {
     static let databaseTableName = "clip"
 }

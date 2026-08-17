@@ -81,6 +81,12 @@ enum ImageStore {
         deleteFiles(at: [payload.imagePath, payload.thumbPath, payload.payloadPath])
     }
 
+    /// Discards a single rich-text payload whose clip has outlived it — an
+    /// edited clip's formatting no longer describes its text.
+    static func deletePayload(at path: String) {
+        deleteFiles(at: [path])
+    }
+
     private static func deleteFiles(at paths: [String?]) {
         let fm = FileManager.default
         for path in paths.compactMap({ $0 }) {

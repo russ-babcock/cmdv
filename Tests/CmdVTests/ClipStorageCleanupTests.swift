@@ -155,6 +155,70 @@ import Testing
         #expect(try store.sweepOrphanedFiles(in: [directory]) == 0)
     }
 
+    // MARK: Editing
+
+    @Test func editingReplacesTextPreviewAndHash() throws {
+        let store = try makeStore()
+        let clip = try store.insert(
+            ClipPayload(kind: .text, plainText: "before", previewText: "before",
+                        contentHash: ContentHash.of("before")),
+            historyLimit: 50
+        )
+
+        try store.updateText(id: clip.id, to: "after")
+
+        let updated = try #require(try store.fetch(id: clip.id))
+        #expect(updated.plainText == "after")
+        #expect(updated.previewText == "after")
+        // The hash has to be what the monitor would produce for this text, or
+        // copying "after" again would not be recognised as the same content.
+        #expect(updated.contentHash == ContentHash.of("after"))
+    }
+
+    @Test func editingDropsStaleFormattingAndItsFile() throws {
+        let store = try makeStore()
+        let directory = try makeScratchDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let payload = try makeFile(in: directory, named: "rich.plist")
+        let clip = try store.insert(
+            ClipPayload(kind: .text, plainText: "before", previewText: "before",
+                        payloadPath: payload, contentHash: ContentHash.of("before")),
+            historyLimit: 50
+        )
+
+        try store.updateText(id: clip.id, to: "after")
+
+        let updated = try #require(try store.fetch(id: clip.id))
+        #expect(updated.payloadPath == nil, "formatting describing the old text must not survive the edit")
+        #expect(!exists(payload), "and its file must not be left behind as an orphan")
+    }
+
+    @Test func editingLeavesTheClipWhereItIsInHistory() throws {
+        let store = try makeStore()
+        let older = try store.insert(
+            ClipPayload(kind: .text, plainText: "older", previewText: "older", contentHash: "older"),
+            historyLimit: 50
+        )
+        _ = try store.insert(
+            ClipPayload(kind: .text, plainText: "newer", previewText: "newer", contentHash: "newer"),
+            historyLimit: 50
+        )
+
+        let before = try #require(try store.fetch(id: older.id)).lastUsedAt
+        try store.updateText(id: older.id, to: "edited")
+        let after = try #require(try store.fetch(id: older.id))
+
+        #expect(after.lastUsedAt == before, "editing is not using — the row must not jump position")
+        #expect(try store.fetchAll().map(\.previewText) == ["newer", "edited"])
+    }
+
+    @Test func editingAMissingClipIsANoOp() throws {
+        let store = try makeStore()
+        try store.updateText(id: "does-not-exist", to: "text")
+        #expect(try store.fetchAll().isEmpty)
+    }
+
     /// Deleting a clip already removed its files; the sweep must not then be
     /// what notices, or a bug in `delete` would go unseen.
     @Test func deletingAClipRemovesItsFilesWithoutTheSweep() throws {

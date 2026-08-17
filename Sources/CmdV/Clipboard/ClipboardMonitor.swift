@@ -1,5 +1,4 @@
 import AppKit
-import CryptoKit
 import Foundation
 
 /// Polls `NSPasteboard.general.changeCount` — the only supported way to detect a
@@ -120,7 +119,7 @@ final class ClipboardMonitor {
                 sourceAppName: sourceAppName,
                 isConcealed: isConcealed,
                 expiresAt: expiresAt,
-                contentHash: Self.hash(imageData)
+                contentHash: ContentHash.of(imageData)
             )
         }
 
@@ -142,7 +141,7 @@ final class ClipboardMonitor {
                 sourceAppName: sourceAppName,
                 isConcealed: isConcealed,
                 expiresAt: expiresAt,
-                contentHash: Self.hash(Data(joined.utf8))
+                contentHash: ContentHash.of(Data(joined.utf8))
             )
         }
 
@@ -165,7 +164,7 @@ final class ClipboardMonitor {
                 sourceAppName: sourceAppName,
                 isConcealed: isConcealed,
                 expiresAt: expiresAt,
-                contentHash: Self.hash(Data(string.utf8))
+                contentHash: ContentHash.of(Data(string.utf8))
             )
         }
 
@@ -235,7 +234,4 @@ final class ClipboardMonitor {
         }
     }
 
-    private static func hash(_ data: Data) -> String {
-        SHA256.hash(data: data).compactMap { String(format: "%02x", $0) }.joined()
-    }
 }

@@ -111,6 +111,12 @@ struct ClipboardView: View {
         .onChange(of: pasteQueue.isActive) { _, isActive in
             if isActive { isSearchFocused = false }
         }
+        .sheet(item: $model.editingClip) { clip in
+            ClipEditorView(clip: clip) { newText in
+                try? clipStore.updateText(id: clip.id, to: newText)
+                model.refresh()
+            }
+        }
     }
 
     private var searchBar: some View {
@@ -187,6 +193,11 @@ struct ClipboardView: View {
     @ViewBuilder
     private func contextMenu(for clip: Clip, effectiveKey: String?) -> some View {
         Button("Preview") { onPreview(clip) }
+        // Only text has text to edit: an image has none, and a file clip's
+        // content is a path the file itself owns, not something to retype.
+        if clip.isEditable {
+            Button("Edit\u{2026}") { model.editingClip = clip }
+        }
         Divider()
         Button("Paste") { onActivate(clip, false) }
         Button("Paste with Formatting") { onActivate(clip, true) }

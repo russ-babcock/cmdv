@@ -33,6 +33,13 @@ final class ClipListViewModel {
     var sidebarFilter: SidebarFilter = .all
     var selectedClipID: String?
 
+    /// The clip the "Edit…" sheet is open on, if any. It lives here rather than
+    /// in `ClipboardView`'s own state because `ClipboardWindowController` has
+    /// to be able to close the editor when the panel goes away — a panel
+    /// ordered out with a sheet still attached comes back unable to receive
+    /// clicks at all.
+    var editingClip: Clip?
+
     var filteredClips: [Clip] {
         var result = clips
         switch sidebarFilter {

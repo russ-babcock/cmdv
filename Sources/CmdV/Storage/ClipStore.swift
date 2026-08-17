@@ -87,6 +87,34 @@ final class ClipStore: @unchecked Sendable {
         ImageStore.deleteFiles(for: clip)
     }
 
+    /// Replaces a text clip's content with `newText`.
+    ///
+    /// Any stored rich representations are dropped. They were captured
+    /// alongside the original text and describe it, so after an edit "Paste
+    /// with Formatting" would paste the *old* wording — an edit that silently
+    /// doesn't apply is worse than losing the formatting. The payload file goes
+    /// with them rather than being left behind as an orphan.
+    ///
+    /// `lastUsedAt` is deliberately untouched: editing a clip is not using it,
+    /// and bumping it would shuffle the row out from under the person editing.
+    func updateText(id: String, to newText: String) throws {
+        guard let clip = try fetch(id: id) else { return }
+        let stalePayloadPath = clip.payloadPath
+
+        try dbQueue.write { db in
+            var updated = clip
+            updated.plainText = newText
+            updated.previewText = String(newText.prefix(500))
+            updated.contentHash = ContentHash.of(newText)
+            updated.payloadPath = nil
+            try updated.update(db)
+        }
+
+        if let stalePayloadPath {
+            ImageStore.deletePayload(at: stalePayloadPath)
+        }
+    }
+
     func touch(id: String) throws {
         try dbQueue.write { db in
             try db.execute(

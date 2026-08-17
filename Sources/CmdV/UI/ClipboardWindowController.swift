@@ -107,7 +107,25 @@ final class ClipboardWindowController: NSWindowController {
     func hide() {
         previewController.hide()
         pasteQueue.deactivate()
+        // A sheet must be dismissed before the panel goes away. Ordering out a
+        // panel with a sheet attached leaves the sheet attached and invisible,
+        // and because it is still modal it silently swallows every click the
+        // panel receives once it is shown again — the window looks fine and
+        // responds to nothing.
+        dismissEditorSheet()
         panel.orderOut(nil)
+    }
+
+    /// Clearing the model's `editingClip` is what actually closes the sheet, so
+    /// SwiftUI's own state agrees the editor is gone. `endSheet` afterwards is
+    /// the backstop: SwiftUI tears the sheet down on a later runloop pass, and
+    /// `orderOut` happens now — closing the panel in between is precisely what
+    /// leaves an invisible sheet attached.
+    private func dismissEditorSheet() {
+        model.editingClip = nil
+        if let sheet = panel.attachedSheet {
+            panel.endSheet(sheet)
+        }
     }
 
     /// Called after a background purge (expired concealed clips) actually
@@ -126,6 +144,13 @@ final class ClipboardWindowController: NSWindowController {
     private func handleResignKey() {
         DispatchQueue.main.async { [weak self] in
             guard let self, !self.pasteQueue.isActive else { return }
+            // A sheet is a window of its own, so presenting one makes the panel
+            // resign key and would otherwise read as "focus left the app" —
+            // closing the panel the instant the editor opened, taking the
+            // editor with it. While a sheet is up the panel stays put whatever
+            // has key status, including another app: the alternative is hiding
+            // with a sheet attached, which is the state that wedges the panel.
+            guard self.panel.attachedSheet == nil else { return }
             let keyWindow = NSApp.keyWindow
             guard keyWindow !== self.panel, keyWindow !== self.previewController.window else { return }
             self.hide()
