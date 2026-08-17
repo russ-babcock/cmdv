@@ -70,8 +70,20 @@ enum ImageStore {
     }
 
     static func deleteFiles(for clip: Clip) {
+        deleteFiles(at: [clip.imagePath, clip.thumbPath, clip.payloadPath])
+    }
+
+    /// Discards the files a capture wrote before it reached the database. The
+    /// monitor does its file I/O up front, so a payload that turns out to be a
+    /// repeat copy — and is therefore never stored as a row — leaves files that
+    /// nothing will ever reference.
+    static func deleteFiles(for payload: ClipPayload) {
+        deleteFiles(at: [payload.imagePath, payload.thumbPath, payload.payloadPath])
+    }
+
+    private static func deleteFiles(at paths: [String?]) {
         let fm = FileManager.default
-        for path in [clip.imagePath, clip.thumbPath, clip.payloadPath].compactMap({ $0 }) {
+        for path in paths.compactMap({ $0 }) {
             try? fm.removeItem(atPath: path)
         }
     }

@@ -34,6 +34,18 @@ final class AppEnvironment {
         LoginItem.setEnabled(preferences.launchAtLogin)
         AppAppearance.apply(preferences.appearance)
 
+        // Runs before the monitor starts, so nothing is mid-capture and a file
+        // that has just been written but not yet stored can't be mistaken for
+        // an orphan.
+        do {
+            let removed = try clipStore.sweepOrphanedFiles()
+            if removed > 0 {
+                NSLog("CmdV: removed \(removed) orphaned stored file(s)")
+            }
+        } catch {
+            NSLog("CmdV: orphan sweep failed: \(error)")
+        }
+
         hotkeyManager.onTrigger = { [weak windowController] in
             windowController?.toggle()
         }

@@ -36,6 +36,11 @@ final class ClipStore: @unchecked Sendable {
                 newest.lastUsedAt = Date()
                 newest.useCount += 1
                 try newest.update(db)
+                // This capture is never stored, but the monitor already wrote
+                // its image and payload files. Without this they would sit on
+                // disk forever: invisible in the UI, untouched by the history
+                // limit, and not purged when a concealed clip expires.
+                ImageStore.deleteFiles(for: payload)
                 return newest
             }
 
@@ -116,6 +121,60 @@ final class ClipStore: @unchecked Sendable {
             ImageStore.deleteFiles(for: clip)
         }
         return true
+    }
+
+    // MARK: Orphan sweep
+
+    /// Deletes stored files that no clip refers to, returning how many went.
+    ///
+    /// Orphans are content the user believes is gone: they don't appear in the
+    /// history, survive the history limit, and outlive the 60-second purge that
+    /// concealed clips rely on. Earlier builds produced them on every repeat
+    /// copy, so this also cleans up after them.
+    ///
+    /// The directories are a parameter so tests operate on their own temporary
+    /// ones — a sweep pointed at the real storage would be destructive to run
+    /// under test.
+    @discardableResult
+    func sweepOrphanedFiles(
+        in directories: [URL] = [AppPaths.imagesDirectory, AppPaths.payloadsDirectory]
+    ) throws -> Int {
+        let referenced = try dbQueue.read { db -> Set<String> in
+            var paths: Set<String> = []
+            for clip in try Clip.fetchAll(db) {
+                for path in [clip.imagePath, clip.thumbPath, clip.payloadPath] {
+                    if let path { paths.insert(Self.canonicalPath(path)) }
+                }
+            }
+            return paths
+        }
+
+        let fm = FileManager.default
+        var removed = 0
+        for directory in directories {
+            let contents = (try? fm.contentsOfDirectory(
+                at: directory,
+                includingPropertiesForKeys: nil
+            )) ?? []
+            for url in contents where !referenced.contains(Self.canonicalPath(url.path)) {
+                do {
+                    try fm.removeItem(at: url)
+                    removed += 1
+                } catch {
+                    NSLog("CmdV: could not remove orphaned file \(url.lastPathComponent): \(error)")
+                }
+            }
+        }
+        return removed
+    }
+
+    /// Both sides of the referenced/on-disk comparison have to be reduced to the
+    /// same form before matching, or the sweep deletes files that are in use.
+    /// `contentsOfDirectory` hands back symlink-resolved paths (`/private/var/…`)
+    /// while a stored path is whatever was recorded at write time (`/var/…`), and
+    /// on macOS those name the same file.
+    private static func canonicalPath(_ path: String) -> String {
+        URL(fileURLWithPath: path).resolvingSymlinksInPath().standardizedFileURL.path
     }
 
     // MARK: Eviction
