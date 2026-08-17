@@ -7,6 +7,15 @@ import Testing
 @Suite struct PasteboardWriterTests {
     private let richType = NSPasteboard.PasteboardType("public.rtf")
 
+    /// A throwaway pasteboard, never `.general`: writing to the real clipboard
+    /// from a test destroys whatever the person running it had copied, and
+    /// CmdV — which is watching that pasteboard — records the fixtures as real
+    /// clips. The name is unique per call because swift-testing runs tests in
+    /// parallel, so a shared one would let them overwrite each other.
+    private func makeScratchPasteboard() -> NSPasteboard {
+        NSPasteboard(name: NSPasteboard.Name("com.babcock.cmdv.tests.\(UUID().uuidString)"))
+    }
+
     private func makeClipWithRichPayload() throws -> Clip {
         let tempURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("\(UUID().uuidString).plist")
@@ -25,18 +34,20 @@ import Testing
 
     @Test func plainPasteWritesOnlyStringType() throws {
         let clip = try makeClipWithRichPayload()
-        PasteboardWriter.write(clip, formatted: false)
+        let pasteboard = makeScratchPasteboard()
+        defer { pasteboard.releaseGlobally() }
+        PasteboardWriter.write(clip, formatted: false, to: pasteboard)
 
-        let pasteboard = NSPasteboard.general
         #expect(pasteboard.string(forType: .string) == "hello")
         #expect(pasteboard.data(forType: richType) == nil)
     }
 
     @Test func formattedPasteWritesRichTypeAlongsidePlainText() throws {
         let clip = try makeClipWithRichPayload()
-        PasteboardWriter.write(clip, formatted: true)
+        let pasteboard = makeScratchPasteboard()
+        defer { pasteboard.releaseGlobally() }
+        PasteboardWriter.write(clip, formatted: true, to: pasteboard)
 
-        let pasteboard = NSPasteboard.general
         #expect(pasteboard.string(forType: .string) == "hello")
         #expect(pasteboard.data(forType: richType) != nil)
     }
@@ -61,9 +72,11 @@ import Testing
             previewText: ClipboardMonitor.fileClipPreview(for: [first, second]),
             contentHash: "files"
         )
-        PasteboardWriter.write(clip, formatted: false)
+        let pasteboard = makeScratchPasteboard()
+        defer { pasteboard.releaseGlobally() }
+        PasteboardWriter.write(clip, formatted: false, to: pasteboard)
 
-        let written = NSPasteboard.general.readObjects(forClasses: [NSURL.self], options: nil) as? [URL]
+        let written = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL]
         let paths = try #require(written).map(\.path)
         #expect(paths == [first.path, second.path])
         // A name with a space survives the percent-encoding round trip.
