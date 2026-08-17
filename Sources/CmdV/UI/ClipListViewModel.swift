@@ -7,6 +7,7 @@ enum SidebarFilter: String, CaseIterable, Identifiable {
     case pinned = "Pinned"
     case images = "Images"
     case text = "Text"
+    case files = "Files"
 
     var id: String { rawValue }
 
@@ -16,7 +17,8 @@ enum SidebarFilter: String, CaseIterable, Identifiable {
         case .favorites: "star"
         case .pinned: "pin"
         case .images: "photo"
-        case .text: "doc.text"
+        case .text: "text.alignleft"
+        case .files: "folder"
         }
     }
 }
@@ -38,7 +40,10 @@ final class ClipListViewModel {
         case .favorites: result = result.filter(\.isFavorite)
         case .pinned: result = result.filter { $0.pinKey != nil }
         case .images: result = result.filter { $0.kind == .image }
-        case .text: result = result.filter { $0.kind == .text || $0.kind == .fileURL }
+        // Copied files used to fall under Text, for want of anywhere better.
+        // Now that they have their own filter, Text means text.
+        case .text: result = result.filter { $0.kind == .text || $0.kind == .rtf || $0.kind == .html }
+        case .files: result = result.filter { $0.kind == .fileURL }
         }
 
         guard !searchText.isEmpty else { return result }

@@ -36,7 +36,7 @@ struct ClipRowView: View {
                         if let sourceAppName = clip.sourceAppName {
                             HStack(spacing: 4) {
                                 if let bundleID = clip.sourceBundleID,
-                                   let icon = AppIconCache.icon(forBundleID: bundleID) {
+                                   let icon = IconCache.appIcon(forBundleID: bundleID) {
                                     Image(nsImage: icon)
                                         .resizable()
                                         .frame(width: 11, height: 11)
@@ -138,10 +138,34 @@ struct ClipRowView: View {
                 placeholderIcon("photo")
             }
         case .fileURL:
-            placeholderIcon("doc")
+            // The file's own Finder icon, not a generic glyph: a PDF, a folder
+            // and a Keynote deck all look like themselves, which separates a
+            // file row from a text row at a glance in a way that two similar
+            // document symbols never did.
+            if let path = firstFilePath {
+                Image(nsImage: IconCache.fileIcon(atPath: path))
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 30, height: 30)
+                    .frame(width: 36, height: 36)
+            } else {
+                placeholderIcon("folder")
+            }
         case .text, .rtf, .html:
-            placeholderIcon("doc.text")
+            // Lines of text rather than a document outline — the outline was
+            // what made this indistinguishable from the file icon.
+            placeholderIcon("text.alignleft")
         }
+    }
+
+    /// A file clip stores one `file://` URL per line; the first is the one whose
+    /// icon stands in for the group.
+    private var firstFilePath: String? {
+        guard let line = clip.plainText?.split(separator: "\n").first,
+              let url = URL(string: String(line)),
+              url.isFileURL
+        else { return nil }
+        return url.path
     }
 
     private func placeholderIcon(_ systemName: String) -> some View {

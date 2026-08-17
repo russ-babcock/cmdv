@@ -1,6 +1,6 @@
 import GRDB
 
-enum ClipKind: String, Codable, DatabaseValueConvertible {
+enum ClipKind: String, Codable, CaseIterable, DatabaseValueConvertible {
     case text
     case rtf
     case html
