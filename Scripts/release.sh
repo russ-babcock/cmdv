@@ -6,6 +6,14 @@
 #   Scripts/release.sh 0.2.0                 # full release
 #   Scripts/release.sh 0.2.0 --dry-run       # build + sign + appcast, no upload
 #   Scripts/release.sh 0.2.0 --notes-file CHANGES.md
+#   Scripts/release.sh 0.2.0 --resume        # finish an interrupted run
+#
+# --resume picks up a run that died after the app was built — notarization can
+# keep you waiting for the better part of an hour, and losing the terminal to a
+# crash or a restart should not mean starting over. It reuses build/CmdV.app
+# exactly as it stands and never rebuilds: a notarization ticket is bound to the
+# code signature it was issued for, so a rebuilt bundle could not be stapled with
+# the ticket Apple already granted.
 #
 # Requirements:
 #   - DEVELOPER_ID env var (Developer ID Application cert) for a notarized build.
@@ -23,16 +31,18 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 if [[ $# -lt 1 ]]; then
-    echo "usage: Scripts/release.sh VERSION [--dry-run] [--notes-file FILE]" >&2
+    echo "usage: Scripts/release.sh VERSION [--dry-run] [--resume] [--notes-file FILE]" >&2
     exit 1
 fi
 
 VERSION="$1"; shift
 DRY_RUN=0
+RESUME=0
 NOTES_FILE=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run) DRY_RUN=1 ;;
+        --resume) RESUME=1 ;;
         --notes-file) NOTES_FILE="$2"; shift ;;
         *) echo "unknown option: $1" >&2; exit 1 ;;
     esac
@@ -60,9 +70,34 @@ if git rev-parse "$TAG" >/dev/null 2>&1; then
     exit 1
 fi
 
+if [[ "$RESUME" == "1" ]]; then
+    if [[ ! -d "$APP_BUNDLE" ]]; then
+        echo "error: --resume needs $APP_BUNDLE, which is not there. Run without --resume." >&2
+        exit 1
+    fi
+
+    PLIST="$APP_BUNDLE/Contents/Info.plist"
+    BUILT_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST")"
+    if [[ "$BUILT_VERSION" != "$VERSION" ]]; then
+        echo "error: $APP_BUNDLE is version $BUILT_VERSION, not $VERSION." >&2
+        echo "       That build belongs to a different release. Run without --resume." >&2
+        exit 1
+    fi
+
+    # Read the build number back out of the bundle rather than minting a fresh
+    # one. Sparkle compares CFBundleVersion, so an appcast advertising a number
+    # the shipped app does not carry would either offer an update that installs
+    # as a no-op or fail to offer one at all.
+    BUILD_NUMBER="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$PLIST")"
+fi
+
 echo "==> Releasing $APP_NAME $VERSION (build $BUILD_NUMBER)"
 
-CMDV_VERSION="$VERSION" CMDV_BUILD="$BUILD_NUMBER" Scripts/build.sh --release
+if [[ "$RESUME" == "1" ]]; then
+    echo "==> Resuming from the existing build — not rebuilding."
+else
+    CMDV_VERSION="$VERSION" CMDV_BUILD="$BUILD_NUMBER" Scripts/build.sh --release
+fi
 
 # ---------------------------------------------------------------- notarize --
 # Notarization needs a real Apple-issued Developer ID; the local self-signed
@@ -71,7 +106,26 @@ CMDV_VERSION="$VERSION" CMDV_BUILD="$BUILD_NUMBER" Scripts/build.sh --release
 mkdir -p "$DIST_DIR"
 rm -f "$ZIP_PATH"
 
-if [[ -n "${DEVELOPER_ID:-}" ]]; then
+# On resume, the bundle may already carry Apple's verdict. Two cases worth
+# telling apart: a run that finished stapling, and a run that was killed while
+# waiting — the second is the common one, because the wait is the long part.
+# In that second case Apple has already approved this exact signature, so the
+# ticket can simply be fetched; resubmitting would mean another trip through
+# the queue for a verdict that already exists.
+NEEDS_NOTARIZE=1
+if [[ "$RESUME" == "1" ]]; then
+    if xcrun stapler validate "$APP_BUNDLE" > /dev/null 2>&1; then
+        echo "==> Already notarized and stapled — skipping submission."
+        NEEDS_NOTARIZE=0
+    elif xcrun stapler staple "$APP_BUNDLE" > /dev/null 2>&1; then
+        echo "==> Apple had already approved this build — stapled without resubmitting."
+        NEEDS_NOTARIZE=0
+    else
+        echo "==> No ticket for this build yet — submitting."
+    fi
+fi
+
+if [[ "$NEEDS_NOTARIZE" == "1" && -n "${DEVELOPER_ID:-}" ]]; then
     if ! xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" >/dev/null 2>&1; then
         echo "error: no notarytool profile '$NOTARY_PROFILE'. Create it with:" >&2
         echo "  xcrun notarytool store-credentials $NOTARY_PROFILE --apple-id ... --team-id ... --password ..." >&2
@@ -91,7 +145,7 @@ if [[ -n "${DEVELOPER_ID:-}" ]]; then
     echo "==> Stapling ticket…"
     xcrun stapler staple "$APP_BUNDLE"
     xcrun stapler validate "$APP_BUNDLE"
-else
+elif [[ "$NEEDS_NOTARIZE" == "1" ]]; then
     echo "WARNING: DEVELOPER_ID unset — build is NOT notarized." >&2
     echo "         Anyone who downloads it must run:" >&2
     echo "           xattr -dr com.apple.quarantine /Applications/$APP_NAME.app" >&2

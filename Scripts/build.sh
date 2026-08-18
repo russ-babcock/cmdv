@@ -49,8 +49,10 @@ fi
 # empty array under `set -u` is an "unbound variable" error, and these flags
 # contain no spaces so word splitting is safe.
 SIGN_FLAGS=""
+HARDENED="no"
 if [[ -n "${DEVELOPER_ID:-}" ]]; then
     SIGN_FLAGS="--options runtime --timestamp"
+    HARDENED="yes"
 fi
 
 echo "==> Building ($CONFIG)…"
@@ -119,7 +121,7 @@ install_name_tool -add_rpath "@executable_path/../Frameworks" "$MACOS_DIR/$APP_N
 # there is no --deep here on purpose. --deep re-signs nested code with the
 # *outer* bundle's rules, which strips the XPC services' own identifiers and
 # produces a bundle the notary service rejects.
-echo "==> Signing (identity: $SIGN_IDENTITY, hardened runtime: ${DEVELOPER_ID:+yes}${DEVELOPER_ID:-no})…"
+echo "==> Signing (identity: $SIGN_IDENTITY, hardened runtime: $HARDENED)…"
 SPARKLE_DEST="$FRAMEWORKS_DIR/Sparkle.framework/Versions/B"
 for xpc in "$SPARKLE_DEST"/XPCServices/*.xpc; do
     [[ -e "$xpc" ]] || continue
