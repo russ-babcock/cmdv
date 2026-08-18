@@ -5,5 +5,18 @@
     <link>https://russ-babcock.github.io/cmdv/appcast.xml</link>
     <description>Updates for CmdV, a clipboard manager for macOS.</description>
     <language>en</language>
+    <item>
+      <title>0.1.1</title>
+      <pubDate>Tue, 18 Aug 2026 00:54:01 +0000</pubDate>
+      <sparkle:version>20260817180837</sparkle:version>
+      <sparkle:shortVersionString>0.1.1</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+      <link>https://github.com/russ-babcock/cmdv/releases/tag/v0.1.1</link>
+      <description>New app icon and menu bar icon.
+
+This is the first notarized release, so macOS will open it without the
+"unidentified developer" warning.</description>
+      <enclosure url="https://github.com/russ-babcock/cmdv/releases/download/v0.1.1/CmdV-0.1.1.zip" length="3732479" type="application/octet-stream" sparkle:edSignature="Vbge+iVJxTf+z8afUGP+pWYSrkrfSd5hJa3lJLoxJVhJZi0HdhWQi/AN4CZycew8GyjvLg/dY1ZJryzLse4hAQ==" />
+    </item>
   </channel>
 </rss>
